@@ -9,31 +9,27 @@ Python 3.12 上的 JSON 发布/订阅封装，增加 `ZenohNode`、单线程 `Ex
 uv sync
 ```
 
-终端一启动订阅节点：
+先启动一个监听 `tcp/127.0.0.1:17447` 的 Zenoh peer 节点，再运行 MuJoCo 仿真：
 
 ```sh
-uv run python src/sub.py
+uv run python mujoco_playground/mujoco_view.py
 ```
 
-终端二启动发布节点：
+仿真节点以 peer 模式连接该地址，在同一个 Zenoh Session 中订阅扭矩指令并发布关节状态：
 
-```sh
-uv run python src/pub.py
-```
+| Key | 方向 | 消息类型 |
+| --- | --- | --- |
+| `robot/arm/command` | 接收 | `Torque` |
+| `robot/arm/angle` | 发送 | `Angle` |
+| `robot/arm/velocity` | 发送 | `Velocity` |
 
-发布节点每 0.1 秒发送一个 `RobotState` 示例消息，其中 `motor_1` 递增、
-其他电机值为 0，`timestamp` 为 Unix 毫秒时间戳。订阅节点将 JSON 字典还原为
-`RobotState`，并打印来源 key 和对象：
+三种消息都使用 `src/messages.py` 中的 `motor_1` 至 `motor_6` 字段。模型有五个关节和五个执行器：
+扭矩指令的第六个值不参与控制，角度和速度消息的第六个值填 `0.0`。跨电脑运行时，
+将 `mujoco_view.py` 中的 `ZENOH_ENDPOINT` 改为监听节点可访问的地址。
 
-```text
-demo/example: RobotState(robot_id='robot_1', motor_1=0.0, motor_2=0.0, motor_3=0.0, motor_4=0.0, motor_5=0.0, motor_6=0.0, is_auto=True, timestamp=...)
-```
-
-两个示例都继承 `ZenohNode`，在构造时创建资源，用 `with` 清理资源，支持
-Ctrl-C 退出。若构造中途失败，已创建的资源也会清理。示例使用 peer 模式直接连接：
-订阅节点监听本机 `tcp/127.0.0.1:17447`，发布节点连接该端点，无需组播发现。
-请先启动订阅节点；跨电脑运行时将两端配置中的地址改为订阅节点可访问的地址。
-其他节点仍可向 `ZenohNode(name, config)` 传入自己的 `zenoh.Config`。
+`MujocoNode` 继承 `ZenohNode`，在构造时创建发布者、订阅者和按模型步长运行的 Timer。
+Timer 回调推进 MuJoCo 仿真并同步被动 viewer；订阅回调和 Timer 回调都由同一线程的
+`spin()` 调度。关闭 viewer 后节点调用 `stop()` 退出。
 
 ## Node 接口
 
@@ -143,6 +139,6 @@ with zenoh.open(zenoh.Config()) as session:
 uv run python -m unittest discover -s tests -v
 ```
 
-测试包括原有三项收发测试、校验、原生环形缓冲区溢出和独立容量、调度顺序、
-回调线程与异常、Timer、停止唤醒、生命周期和构造失败，以及两个独立进程的
-定时收发与 SIGINT（Ctrl-C）正常退出。真实 Zenoh 测试需要系统允许其共享内存和网络初始化。
+测试包括收发、校验、原生环形缓冲区、调度、Timer、生命周期，以及使用真实 Zenoh
+会话和无窗口 viewer 验证 MuJoCo 的扭矩接收、角度和速度发布。真实 Zenoh 测试需要
+系统允许其共享内存和网络初始化。
