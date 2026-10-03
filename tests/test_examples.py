@@ -1,6 +1,7 @@
 import importlib.util
 from pathlib import Path
 import queue
+import re
 import signal
 import subprocess
 import sys
@@ -39,7 +40,7 @@ class ExampleTests(unittest.TestCase):
                 module.SubscriberNode()
         session.close.assert_called_once()
 
-    def test_two_processes_publish_counts_and_exit_on_ctrl_c(self):
+    def test_two_processes_publish_robot_states(self):
         lines = queue.Queue()
         processes = []
         readers = []
@@ -68,15 +69,17 @@ class ExampleTests(unittest.TestCase):
             subscriber = start('sub')
             wait_line('sub', lambda line: 'Listening' in line)
             publisher = start('pub')
-            messages = [wait_line('sub', lambda line: line.startswith('demo/example:')) for _ in range(3)]
-            # Parse the printed Python dictionaries without executing text.
-            import ast
-            counts = [ast.literal_eval(line.split(': ', 1)[1])['count'] for line in messages]
-            self.assertEqual(counts, list(range(counts[0], counts[0] + 3)))
-            for process in [publisher, subscriber]:
-                process.send_signal(signal.SIGINT)
-                self.assertEqual(process.wait(timeout=5), 0)
-                self.assertEqual(process.stderr.read(), '')
+            messages = [wait_line('sub', lambda line: line.startswith('demo/example: RobotState('))
+                        for _ in range(3)]
+            self.assertTrue(all("robot_id='robot_1'" in line and 'is_auto=True' in line
+                                for line in messages))
+            counts = [float(re.search(r'motor_1=([0-9.]+)', line).group(1)) for line in messages]
+            self.assertEqual(counts, [counts[0], counts[0] + 1, counts[0] + 2])
+            if sys.platform != 'win32':
+                for process in [publisher, subscriber]:
+                    process.send_signal(signal.SIGINT)
+                    self.assertEqual(process.wait(timeout=5), 0)
+                    self.assertEqual(process.stderr.read(), '')
         finally:
             for process in processes:
                 if process.poll() is None:

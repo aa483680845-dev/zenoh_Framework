@@ -1,0 +1,93 @@
+<mujoco model="robot">
+  <default>
+    <default class="robot">
+      <default class="visual">
+        <geom contype="0" conaffinity="0" group="2" />
+      </default>
+      <default class="collision">
+        <geom contype="0" conaffinity="1" group="3" />
+      </default>
+    </default>
+    <default class="floor">
+      <geom type="plane" size="0 0 0.05" material="groundplane" />
+    </default>
+  </default>
+
+  <compiler angle="radian" meshdir="." balanceinertia="true" />
+
+  <visual>
+    <global offwidth="3840" offheight="2160" />
+  </visual>
+
+  <worldbody>
+    <body name="base" childclass="robot" pos="0 0 0.008">
+      <geom name="base_collision" type="mesh" mesh="base_collision_base_visual" class="collision" />
+      <geom name="base_visual" type="mesh" mesh="base_base_visual" material="base_color" class="visual" />
+      <body name="link1" pos="0 0 0.046">
+        <inertial pos="0.00008222 -0.0160238 0.03294265" mass="0.34482974" diaginertia="8.911e-05 9.56e-05 7.549e-05" />
+        <joint name="joint1" type="hinge" range="-3 3" damping="0.15" axis="0 0 1" />
+        <geom name="link1_collision" type="mesh" mesh="link1_collision_link1_visual" class="collision" />
+        <geom name="link1_visual" type="mesh" mesh="link1_link1_visual" material="link1_color" class="visual" />
+        <body name="link2" pos="0 -0.041 0.036">
+          <inertial pos="-0.10586847 0.01468354 0.03029488" mass="0.48971002" diaginertia="0.0002561 0.00085281 0.00079733" />
+          <joint name="joint2" type="hinge" range="-2.5 0" damping="0.15" axis="0 -1 0" />
+          <geom name="link2_collision" type="mesh" mesh="link2_collision_link2_visual" class="collision" />
+          <geom name="link2_visual" type="mesh" mesh="link2_link2_visual" material="base_color" class="visual" />
+          <body name="link3" pos="-0.12496402 -0.004 0.03583286">
+            <inertial pos="0.07863743 -0.03662376 0.02698167" mass="0.18094807" diaginertia="0.00010718 0.00027689 0.00028641" />
+            <joint name="joint3" type="hinge" range="0 3.14" damping="0.15" axis="0 -1 0" />
+            <geom name="link3_collision" type="mesh" mesh="link3_collision_link3_visual" class="collision" />
+            <geom name="link3_visual" type="mesh" mesh="link3_link3_visual" material="link3_color" class="visual" />
+            <body name="link4" pos="0.11251671 -0.046 0.03874261">
+              <inertial pos="0.02302413 -0.00009557 0.02115237" mass="0.1588118" diaginertia="4.492e-05 6.325e-05 6.419e-05" />
+              <joint name="joint4" type="hinge" range="0 3.14" damping="0.05" axis="0.94551858 0 0.32556815" />
+              <geom name="link4_collision" type="mesh" mesh="link4_collision_link4_visual" class="collision" />
+              <geom name="link4_visual" type="mesh" mesh="link4_link4_visual" material="link3_color" class="visual" />
+              <body name="link5" pos="0.03501537 0 0.0088839">
+                <inertial pos="-0.00734914 0.10852801 -0.00383624" mass="0.22771059" diaginertia="0.000609 6.628e-05 0.00062006" />
+                <joint name="joint5" type="hinge" range="0 3.14" damping="0.05" axis="0.32556815 0 -0.94551858" />
+                <geom name="link5_collision" type="mesh" mesh="link5_collision_link5_visual" class="collision" />
+                <geom name="link5_visual" type="mesh" mesh="link5_link5_visual" material="link3_color" class="visual" />
+              </body>
+            </body>
+          </body>
+        </body>
+      </body>
+    </body>
+    <light pos="0 0 2." dir="0 0 -1" directional="true" />
+    <geom name="floor" class="floor" size="0 0 0.05" />
+  </worldbody>
+
+  <asset>
+    <material name="base_color" rgba="0.49803922 0.49803922 0.49803922 1" />
+    <material name="link1_color" rgba="0.89411765 0.89411765 0.89411765 1" />
+    <material name="link3_color" rgba="1 1 1 1" />
+    <mesh name="base_collision_base_visual" file="meshes/meshes\base_visual.stl" />
+    <mesh name="base_base_visual" file="meshes/meshes\base_visual.stl" />
+    <mesh name="link1_collision_link1_visual" file="meshes/meshes\link1_visual.stl" />
+    <mesh name="link1_link1_visual" file="meshes/meshes\link1_visual.stl" />
+    <mesh name="link2_collision_link2_visual" file="meshes/meshes\link2_visual.stl" />
+    <mesh name="link2_link2_visual" file="meshes/meshes\link2_visual.stl" />
+    <mesh name="link3_collision_link3_visual" file="meshes/meshes\link3_visual.stl" />
+    <mesh name="link3_link3_visual" file="meshes/meshes\link3_visual.stl" />
+    <mesh name="link4_collision_link4_visual" file="meshes/meshes\link4_visual.stl" />
+    <mesh name="link4_link4_visual" file="meshes/meshes\link4_visual.stl" />
+    <mesh name="link5_collision_link5_visual" file="meshes/meshes\link5_visual.stl" />
+    <mesh name="link5_link5_visual" file="meshes/meshes\link5_visual.stl" />
+    <texture type="2d" name="groundplane" builtin="checker" mark="edge" rgb1="0.2 0.3 0.4" rgb2="0.1 0.2 0.3" markrgb="0.8 0.8 0.8" width="300" height="300" />
+    <material name="groundplane" texture="groundplane" texuniform="true" texrepeat="5 5" reflectance="0.2" />
+    <texture type="skybox" builtin="gradient" rgb1="0.3 0.5 0.7" rgb2="0 0 0" width="512" height="3072" />
+  </asset>
+
+  <actuator>
+    <motor name="motor1" joint="joint1" gear="1" forcelimited="true" forcerange="-3 3"/>
+    <motor name="motor2" joint="joint2" gear="1" forcelimited="true" forcerange="-3 3"/>
+    <motor name="motor3" joint="joint3" gear="1" forcelimited="true" forcerange="-3 3"/>
+    <motor name="motor4" joint="joint4" gear="1" forcelimited="true" forcerange="-1 1"/>
+    <motor name="motor5" joint="joint5" gear="1" forcelimited="true" forcerange="-1 1"/>
+  </actuator>
+
+  <visual>
+    <rgba haze="0.15 0.25 0.35 1" />
+  </visual>
+</mujoco>

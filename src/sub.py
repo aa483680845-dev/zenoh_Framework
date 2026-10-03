@@ -2,12 +2,19 @@
 
 from typing import Any
 
+import zenoh
+
+from messages import RobotState
 from zenoh_learn.node import ZenohNode
 
 
 class SubscriberNode(ZenohNode):
     def __init__(self) -> None:
-        super().__init__('counter_subscriber')
+        config = zenoh.Config()
+        config.insert_json5('mode', '"peer"')
+        config.insert_json5('scouting/multicast/enabled', 'false')
+        config.insert_json5('listen/endpoints', '["tcp/127.0.0.1:17447"]')
+        super().__init__('counter_subscriber', config)
         try:
             self.subscription = self.create_json_subscriber('demo/example', self.on_message)
         except BaseException as error:
@@ -15,7 +22,8 @@ class SubscriberNode(ZenohNode):
             raise
 
     def on_message(self, key: str, data: dict[str, Any]) -> None:
-        print(f'{key}: {data}', flush=True)
+        state = RobotState.from_dict(data)
+        print(f'{key}: {state}', flush=True)
 
 
 def main() -> None:

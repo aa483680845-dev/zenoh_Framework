@@ -21,16 +21,19 @@ uv run python src/sub.py
 uv run python src/pub.py
 ```
 
-发布节点每 0.1 秒发送递增的 `count`，订阅节点打印来源 key 和数据：
+发布节点每 0.1 秒发送一个 `RobotState` 示例消息，其中 `motor_1` 递增、
+其他电机值为 0，`timestamp` 为 Unix 毫秒时间戳。订阅节点将 JSON 字典还原为
+`RobotState`，并打印来源 key 和对象：
 
 ```text
-demo/example: {'count': 0}
-demo/example: {'count': 1}
+demo/example: RobotState(robot_id='robot_1', motor_1=0.0, motor_2=0.0, motor_3=0.0, motor_4=0.0, motor_5=0.0, motor_6=0.0, is_auto=True, timestamp=...)
 ```
 
 两个示例都继承 `ZenohNode`，在构造时创建资源，用 `with` 清理资源，支持
-Ctrl-C 退出。若构造中途失败，已创建的资源也会清理。默认 Zenoh peer 配置依赖
-可用的网络发现；也可以向 `ZenohNode(name, config)` 传入自己的 `zenoh.Config`。
+Ctrl-C 退出。若构造中途失败，已创建的资源也会清理。示例使用 peer 模式直接连接：
+订阅节点监听本机 `tcp/127.0.0.1:17447`，发布节点连接该端点，无需组播发现。
+请先启动订阅节点；跨电脑运行时将两端配置中的地址改为订阅节点可访问的地址。
+其他节点仍可向 `ZenohNode(name, config)` 传入自己的 `zenoh.Config`。
 
 ## Node 接口
 

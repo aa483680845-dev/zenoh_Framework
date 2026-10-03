@@ -6,6 +6,7 @@ readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "eclipse-zenoh>=1.10.1",
+    "mujoco>=3.14.0",
 ]
 
 [project.scripts]
