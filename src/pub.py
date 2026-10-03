@@ -3,6 +3,7 @@
 import time
 
 import zenoh
+from typing import Any
 
 from messages import RobotState
 from zenoh_learn.node import ZenohNode
@@ -10,15 +11,19 @@ from zenoh_learn.node import ZenohNode
 
 class PublisherNode(ZenohNode):
     def __init__(self) -> None:
+        # 为发布节点创建独立配置；peer 模式让业务节点直接通信，无需 zenohd。
         config = zenoh.Config()
         config.insert_json5('mode', '"peer"')
+        # 不依赖 UDP 组播自动发现，改用下方明确指定的 TCP 地址。
         config.insert_json5('scouting/multicast/enabled', 'false')
+        # 连接订阅节点的监听地址；127.0.0.1 表示两端运行在同一台电脑。
         config.insert_json5('connect/endpoints', '["tcp/127.0.0.1:17447"]')
         super().__init__('counter_publisher', config)
         try:
             self.publisher = self.create_json_publisher('demo/example')
             self.count = 0
             self.timer = self.create_timer(0.1, self.publish_state)
+            self.subscription = self.create_json_subscriber('demo/sub', self.on_message)
         except BaseException as error:
             self.__exit__(type(error), error, error.__traceback__)
             raise
@@ -37,7 +42,9 @@ class PublisherNode(ZenohNode):
         )
         self.publisher.publish(state.to_dict())
         self.count += 1
-
+    def on_message(self, key: str, data: dict[str, Any]) -> None:
+        state = RobotState.from_dict(data)
+        print(f'{state}', flush=True)
 
 def main() -> None:
     try:
