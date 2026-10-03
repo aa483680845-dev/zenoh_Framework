@@ -11,7 +11,7 @@ if TYPE_CHECKING:
 
 
 class Timer:
-    """A periodic monotonic timer; cancel on the executor's owner thread."""
+    """A periodic high-resolution timer; cancel on the executor's owner thread."""
 
     def __init__(self, period: float, callback: Callable[[], None], executor: 'Executor') -> None:
         if isinstance(period, bool) or not isinstance(period, (int, float)):
@@ -21,7 +21,7 @@ class Timer:
         self._period = period
         self._callback = callback
         self._executor = executor
-        now = time.monotonic()
+        now = time.perf_counter()
         self._deadline = now + period
         if self._deadline <= now:
             self._deadline = math.nextafter(now, math.inf)
@@ -37,7 +37,7 @@ class Timer:
         self._callback()
         # Advance the planned deadline beyond callback completion. Late periods
         # are skipped, including time spent inside a slow callback.
-        now = time.monotonic()
+        now = time.perf_counter()
         elapsed_periods = (now - self._deadline) / self._period
         if math.isfinite(elapsed_periods):
             skipped = max(1, math.floor(elapsed_periods) + 1)
@@ -68,7 +68,6 @@ class Executor:
         self._stopped = threading.Event()
         self._running = False
         self._closed = False
-        self._idle_wait = 0.01
 
     def _check_owner(self) -> None:
         if threading.get_ident() != self._owner:
@@ -100,7 +99,7 @@ class Executor:
         for timer in tuple(self._timers):
             if self._stopped.is_set():
                 return did_work
-            did_work = timer._dispatch_due(time.monotonic()) or did_work
+            did_work = timer._dispatch_due(time.perf_counter()) or did_work
         for subscriber in tuple(self._subscribers):
             if self._stopped.is_set():
                 break
@@ -112,13 +111,7 @@ class Executor:
         self._running = True
         try:
             while not self._stopped.is_set():
-                if self._run_once():
-                    continue
-                now = time.monotonic()
-                delay = min((max(0.0, timer._deadline - now)
-                             for timer in self._timers if not timer._cancelled),
-                            default=self._idle_wait)
-                self._stopped.wait(min(self._idle_wait, delay))
+                self._run_once()
         finally:
             self._running = False
 

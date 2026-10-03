@@ -44,7 +44,7 @@ class NodeTests(unittest.TestCase):
             calls = []
             sub = node.create_json_subscriber(key, lambda k, d: calls.append('message'))
             node.create_json_publisher(key).publish({'ready': True})
-            with patch('zenoh_learn.executor.time.monotonic', return_value=0) as clock:
+            with patch('zenoh_learn.executor.time.perf_counter', return_value=0) as clock:
                 node.create_timer(1, lambda: (calls.append('timer'), sub.close()))
                 clock.return_value = 1
                 node._executor._run_once()

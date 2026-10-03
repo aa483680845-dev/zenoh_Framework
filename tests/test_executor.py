@@ -8,9 +8,19 @@ from zenoh_learn.executor import Executor
 
 
 class ExecutorTests(unittest.TestCase):
+    def test_short_timer_uses_high_resolution_clock(self):
+        calls = []
+        with patch('zenoh_learn.executor.time.monotonic', return_value=0), \
+             patch('zenoh_learn.executor.time.perf_counter', return_value=0) as clock:
+            executor = Executor()
+            executor.create_timer(0.002, lambda: calls.append(True))
+            clock.return_value = 0.002
+            executor._run_once()
+        self.assertEqual(calls, [True])
+
     def test_timer_deadline_and_skips_missed_periods(self):
         calls = []
-        with patch('zenoh_learn.executor.time.monotonic', return_value=10) as clock:
+        with patch('zenoh_learn.executor.time.perf_counter', return_value=10) as clock:
             executor = Executor()
             executor.create_timer(1, lambda: calls.append(clock.return_value))
             clock.return_value = 10.9
@@ -25,7 +35,7 @@ class ExecutorTests(unittest.TestCase):
             self.assertEqual(calls, [14.5, 15])
 
     def test_slow_callback_does_not_accumulate_timer_work(self):
-        with patch('zenoh_learn.executor.time.monotonic', return_value=0) as clock:
+        with patch('zenoh_learn.executor.time.perf_counter', return_value=0) as clock:
             executor = Executor()
             calls = []
             def callback():
@@ -42,7 +52,7 @@ class ExecutorTests(unittest.TestCase):
 
     def test_tiny_positive_periods_do_not_overflow_after_delay(self):
         for period in [5e-324, 1e-308, 0.1]:
-            with self.subTest(period=period), patch('zenoh_learn.executor.time.monotonic', return_value=0) as clock:
+            with self.subTest(period=period), patch('zenoh_learn.executor.time.perf_counter', return_value=0) as clock:
                 executor = Executor()
                 calls = []
                 executor.create_timer(period, lambda: calls.append(True))
@@ -52,7 +62,7 @@ class ExecutorTests(unittest.TestCase):
                 self.assertEqual(calls, [True])
 
     def test_rounding_does_not_dispatch_before_next_planned_period(self):
-        with patch('zenoh_learn.executor.time.monotonic', return_value=0) as clock:
+        with patch('zenoh_learn.executor.time.perf_counter', return_value=0) as clock:
             executor = Executor()
             calls = []
             executor.create_timer(0.1, lambda: calls.append(True))
@@ -66,7 +76,7 @@ class ExecutorTests(unittest.TestCase):
             self.assertEqual(calls, [True, True])
 
     def test_period_below_clock_precision_is_scheduled_in_future(self):
-        with patch('zenoh_learn.executor.time.monotonic', return_value=10) as clock:
+        with patch('zenoh_learn.executor.time.perf_counter', return_value=10) as clock:
             executor = Executor()
             calls = []
             executor.create_timer(5e-324, lambda: calls.append(True))
@@ -77,7 +87,7 @@ class ExecutorTests(unittest.TestCase):
             self.assertEqual(calls, [True])
 
     def test_cancel_prevents_pending_timer_callback(self):
-        with patch('zenoh_learn.executor.time.monotonic', return_value=0) as clock:
+        with patch('zenoh_learn.executor.time.perf_counter', return_value=0) as clock:
             executor = Executor()
             calls = []
             executor.create_timer(1, lambda: timer.cancel())
@@ -109,10 +119,8 @@ class ExecutorTests(unittest.TestCase):
         self.assertIs(caught.exception, error)
         self.assertFalse(executor._running)
 
-    def test_stop_wakes_idle_wait(self):
+    def test_stop_ends_idle_spin(self):
         executor = Executor()
-        # A longer wait makes this check distinguish Event.wait from time.sleep.
-        executor._idle_wait = 1
         stopper = threading.Thread(target=lambda: (time.sleep(0.02), executor.stop()))
         stopper.start()
         started = time.monotonic()
@@ -121,13 +129,11 @@ class ExecutorTests(unittest.TestCase):
         stopper.join(1)
         self.assertLess(elapsed, 0.3)
 
-    def test_nearest_timer_shortens_idle_wait(self):
+    def test_idle_spin_does_not_wait_for_timer(self):
         executor = Executor()
-        executor._idle_wait = 1
-        executor.create_timer(0.01, executor.stop)
-        started = time.monotonic()
-        executor.spin()
-        self.assertLess(time.monotonic() - started, 0.3)
+        executor.create_timer(0.002, executor.stop)
+        with patch.object(executor._stopped, 'wait', side_effect=AssertionError('executor waited')):
+            executor.spin()
 
     def test_callbacks_run_serially_on_spin_thread(self):
         executor = Executor()
